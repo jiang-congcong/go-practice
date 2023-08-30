@@ -290,3 +290,4 @@ docker/mysql/data/sys/x@0024waits_by_user_by_latency.frm
 docker/mysql/data/sys/x@0024waits_global_by_latency.frm
 docker/redis/data/dump.rdb
 docker/redis/data/redis.log
+go.sum
