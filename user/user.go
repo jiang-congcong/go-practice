@@ -4,15 +4,17 @@ import (
 	"gopractice/util"
 
 	"github.com/go-playground/validator/v10"
+
+	"gopractice/redis"
 )
 
 var validate = validator.New()
 
 type User struct {
-	Id       int64  `json:"id" validate:"required"`
+	Id       int64  `json:"id"`
 	Username string `json:"username" validate:"required,min=1,max=20"`
 	Password string `json:"password" validate:"required,min=6,max=30"`
-	Age      int    `json:"age" validate:"required,gte=0,lte=130"`
+	Age      int    `json:"age" validate:"gte=0,lte=130"`
 	Gender   string `json:"gender" validate:"oneof=male female"`
 }
 
@@ -80,6 +82,51 @@ func Rgister(user User) util.Result {
 		Code:    0,
 		Message: "注册失败！",
 	}
+
+	return result
+}
+
+func Login(user User) util.Result {
+	err := validate.Struct(user)
+	if err != nil {
+		result := util.Result{
+			Code:    -1,
+			Message: "valid params error！",
+		}
+
+		return result
+	}
+
+	db := util.OpenMySQL()
+	if db == nil {
+		result := util.Result{
+			Code:    -1,
+			Message: "数据库异常！",
+		}
+
+		return result
+	}
+
+	isExist := UserExist(user.Username, user.Password)
+	if !isExist {
+		result := util.Result{
+			Code:    -1,
+			Message: "用户不存在!",
+		}
+
+		return result
+	}
+
+	// TODO token
+	token := ""
+	data := make(map[string]string)
+	data["token"] = token
+	result := util.Result{
+		Code: 0,
+		Data: data,
+	}
+
+	redis.Set(token, 1)
 
 	return result
 }
