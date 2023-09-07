@@ -2,10 +2,11 @@ package user
 
 import (
 	"gopractice/util"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 
-	"gopractice/redis"
+	"gopractice/jwt"
 )
 
 var validate = validator.New()
@@ -18,7 +19,7 @@ type User struct {
 	Gender   string `json:"gender" validate:"oneof=male female"`
 }
 
-func UserExist(username string, password string) bool {
+func UserExist(username string, password string) (bool, User) {
 	user := User{
 		Username: username,
 		Password: password,
@@ -26,12 +27,12 @@ func UserExist(username string, password string) bool {
 
 	db := util.OpenMySQL()
 	if db == nil {
-		return false
+		return false, user
 	}
 
 	tx := db.First(&user)
 
-	return tx.RowsAffected > 0
+	return tx.RowsAffected > 0, user
 }
 
 func Rgister(user User) util.Result {
@@ -44,7 +45,7 @@ func Rgister(user User) util.Result {
 		return res
 	}
 
-	isExist := UserExist(user.Username, user.Password)
+	isExist, _ := UserExist(user.Username, user.Password)
 
 	if isExist {
 		result := util.Result{
@@ -107,7 +108,7 @@ func Login(user User) util.Result {
 		return result
 	}
 
-	isExist := UserExist(user.Username, user.Password)
+	isExist, queryUser := UserExist(user.Username, user.Password)
 	if !isExist {
 		result := util.Result{
 			Code:    -1,
@@ -117,16 +118,21 @@ func Login(user User) util.Result {
 		return result
 	}
 
-	// TODO token
-	token := ""
+	token, err2 := jwt.IssueToken(strconv.FormatInt(queryUser.Id, 10), queryUser.Username)
+	if err2 != nil {
+		return util.Result{
+			Code:    1,
+			Message: "login failed",
+			Data:    nil,
+		}
+	}
+
 	data := make(map[string]string)
 	data["token"] = token
 	result := util.Result{
 		Code: 0,
 		Data: data,
 	}
-
-	redis.Set(token, 1)
 
 	return result
 }
